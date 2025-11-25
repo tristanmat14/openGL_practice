@@ -1,0 +1,8 @@
+# Ignore random notes I leave for myself locally
+*.txt
+
+# Ignore .swp files (from vim)
+*.swp
+
+# Ignore the build directory
+build
