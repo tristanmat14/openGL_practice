@@ -6,3 +6,6 @@
 
 # Ignore the build directory
 build
+
+# Ignore vscode config files
+.vscode
