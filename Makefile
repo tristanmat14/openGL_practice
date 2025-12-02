@@ -7,7 +7,8 @@ CC := x86_64-w64-mingw32-gcc
 C_FLAGS := -Iinclude
 
 # Linking flags
-LD_FLAGS := -Lwinlibs -lglfw3 -lopengl32 -lgdi32
+LD_FLAGS := -static -static-libgcc -static-libstdc++ \
+            -Lwinlibs -lglfw3 -lopengl32 -lgdi32
 
 # Default compilation mode
 mode ?= release
