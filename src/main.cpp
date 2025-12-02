@@ -12,7 +12,10 @@
 #include <camera.h>
 
 const char* vertexPath = "./shaders/vertex.glsl";
-const char* fragementPath = "./shaders/fragment.glsl";
+const char* textureFragPath = "./shaders/texture_fragment.glsl";
+const char* lightingFragPath = "./shaders/lighting_fragment.glsl";
+const char* lightSourceFragPath = "./shaders/light_source_fragment.glsl";
+
 const char* containerJPG = "./textures/container.jpg";
 const char* awesomefacePNG = "./textures/awesomeface.png";
 
@@ -90,52 +93,52 @@ int main(int argc, char* argv[]) {
     // enable depth testing
     glEnable(GL_DEPTH_TEST);
 
-    // create shader program
-    Shader shaderProgram(vertexPath, fragementPath);
+    // create shader programs
+    Shader shaderProgram(vertexPath, lightingFragPath);
+    Shader lightSourceShader(vertexPath, lightSourceFragPath);
 
-    // set up vertex data (and buffers) and configure vertex attributes
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
     unsigned int VBO, VAO;
@@ -145,10 +148,10 @@ int main(int argc, char* argv[]) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    // normal vector attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     // unbind VAO
     glBindVertexArray(0);
@@ -215,14 +218,20 @@ int main(int argc, char* argv[]) {
     // define the cube positions
     glm::vec3 cubePositions[] = {
         glm::vec3( 0.0f,  0.0f,  0.0f), 
-        glm::vec3( 15.0f,  0.0f,  0.0f), 
-        glm::vec3( 0.0f,  15.0f,  0.0f), 
-        glm::vec3( 0.0f,  0.0f,  15.0f), 
-        glm::vec3( 0.0f,  0.0f,  -15.0f), 
-        glm::vec3( 0.0f,  -15.0f,  0.0f), 
-        glm::vec3( -15.0f,  0.0f,  0.0f), 
-        glm::vec3( 2.0f,  5.0f, -15.0f)
+        glm::vec3( 10.0f,  0.0f,  0.0f), 
+        glm::vec3( 0.0f,  10.0f,  0.0f), 
+        glm::vec3( 0.0f,  0.0f,  10.0f), 
+        glm::vec3( 0.0f,  0.0f,  -10.0f), 
+        glm::vec3( 0.0f,  -10.0f,  0.0f), 
+        glm::vec3( -10.0f,  0.0f,  0.0f), 
     };
+
+    glm::vec3 lightPosRotationAxis = glm::normalize(glm::vec3(0.0f, 2.0f, 1.0f));
+    float lightAngularFreq = 0.5; // rad/s
+    glm::vec3 lightPosition(8.0f, 8.0f, 8.0f);
+   
+    glm::vec3 objectColor(1.0f, 0.5f, 0.31f);
+    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
@@ -233,24 +242,30 @@ int main(int argc, char* argv[]) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
 
+        // calculate light position
+        float angleRad = lightAngularFreq * deltaTime;
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angleRad, lightPosRotationAxis);
+        lightPosition = glm::vec3(rotation * glm::vec4(lightPosition, 1.0f));
+
         // input
         processInput(window);
         
         // rendering commands
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         // activate shader
         shaderProgram.use();
-        shaderProgram.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-        shaderProgram.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+        shaderProgram.setVec3("objectColor", objectColor);
+        shaderProgram.setVec3("lightColor", lightColor);
+        shaderProgram.setVec3("lightPos", lightPosition);
+        shaderProgram.setVec3("viewPos", camera.getPosition());
 
         // generate viewProjection matrix
         glm::mat4 projection = glm::perspective(glm::radians(camera.getZoom()), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.getViewMatrix();
 
         glm::mat4 viewProjection = projection * view;
-
         shaderProgram.setMat4("viewProjection", viewProjection);
 
         // render boxes
@@ -258,9 +273,25 @@ int main(int argc, char* argv[]) {
         for (auto pos : cubePositions) {
             // calculate the model matrix for each object and pass to shader before drawing
             glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(model));
             shaderProgram.setMat4("model", model);
+            shaderProgram.setMat3("normalMatrix", normalMatrix);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+
+        // render light source
+        lightSourceShader.use();
+        
+        lightSourceShader.setMat4("viewProjection", viewProjection);
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), lightPosition);
+        model = glm::scale(model, glm::vec3(0.2f));
+        lightSourceShader.setMat4("model", model);
+
+        lightSourceShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
+        lightSourceShader.setVec3("lightColor", 0.0f, 0.0f, 0.0f);
+        shaderProgram.setVec3("lightPos", lightPosition);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);

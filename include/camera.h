@@ -99,6 +99,10 @@ public:
         return 45.0f;
     }
 
+    glm::vec3 getPosition() const {
+        return glm::vec3(position_);
+    }
+
 private:
 
     glm::vec3 getCameraForward() const {
