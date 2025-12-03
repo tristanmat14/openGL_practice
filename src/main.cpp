@@ -30,7 +30,7 @@ unsigned int SCR_HEIGHT = 600;
 bool wireframeMode = false;
 
 // Camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(20.0f, 14.5f, 15.2f), glm::vec3(-0.6512f, -0.4769f, -0.5903f));
 
 // Timing
 float deltaTime = 0.0f;
@@ -228,9 +228,7 @@ int main(int argc, char* argv[]) {
 
     glm::vec3 lightPosRotationAxis = glm::normalize(glm::vec3(0.0f, 2.0f, 1.0f));
     float lightAngularFreq = 0.5; // rad/s
-    glm::vec3 lightPosition(8.0f, 8.0f, 8.0f);
-   
-    glm::vec3 objectColor(1.0f, 0.5f, 0.31f);
+    glm::vec3 lightPosition(8.0f, 8.0f, 8.0f);   
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
     // resets lastFrame before entering render loop
@@ -256,10 +254,24 @@ int main(int argc, char* argv[]) {
         
         // activate shader
         shaderProgram.use();
-        shaderProgram.setVec3("objectColor", objectColor);
-        shaderProgram.setVec3("lightColor", lightColor);
-        shaderProgram.setVec3("lightPos", lightPosition);
         shaderProgram.setVec3("viewPos", camera.getPosition());
+        
+        shaderProgram.setVec3("material.ambient", 1.0f, 0.5f, 0.31f);
+        shaderProgram.setVec3("material.diffuse", 1.0f, 0.5f, 0.31f);
+        shaderProgram.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
+        shaderProgram.setFloat("material.shininess", 32.0f);
+
+        lightColor.x = sin(glfwGetTime() * 2.0f);
+        lightColor.y = sin(glfwGetTime() * 0.7f);
+        lightColor.z = sin(glfwGetTime() * 1.3f);
+        
+        glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); 
+        glm::vec3 ambientColor = lightColor * glm::vec3(0.2f); 
+        
+        shaderProgram.setVec3("light.ambient",  ambientColor);
+        shaderProgram.setVec3("light.diffuse",  diffuseColor);
+        shaderProgram.setVec3("light.specular", glm::vec3(1.0f) * lightColor); 
+        shaderProgram.setVec3("light.position", lightPosition);
 
         // generate viewProjection matrix
         glm::mat4 projection = glm::perspective(glm::radians(camera.getZoom()), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -285,23 +297,29 @@ int main(int argc, char* argv[]) {
         lightSourceShader.setMat4("viewProjection", viewProjection);
         glm::mat4 model = glm::translate(glm::mat4(1.0f), lightPosition);
         model = glm::scale(model, glm::vec3(0.2f));
+        
         lightSourceShader.setMat4("model", model);
-
-        lightSourceShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-        lightSourceShader.setVec3("lightColor", 0.0f, 0.0f, 0.0f);
-        shaderProgram.setVec3("lightPos", lightPosition);
-
+        lightSourceShader.setVec3("lightColor", lightColor);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        std::cout << "Camera Information:\n";
+        glm::vec3 cPos = camera.getPosition();
+        std::cout << "Position: " << cPos.x << ", " << cPos.y << ", " << cPos.z << ".\n";
+        glm::vec3 cDir = camera.getDirection();
+        std::cout << "Direction: " << cDir.x << ", " << cDir.y << ", " << cDir.z << ".\n"; 
+        std::cout << "---------------------\n";
+
     }
 
     // clean up
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram.ID);
+    glDeleteProgram(lightSourceShader.ID);
 
     glfwTerminate();
 

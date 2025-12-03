@@ -27,7 +27,7 @@ private:
 
     // pitch and yaw stored as degrees.
     float pitch_;
-    float yaw_ = 0.0f;
+    float yaw_;
 
     float sensitivity = DEFAULT_SENSITIVITY;
     float speed = DEFAULT_SPEED;
@@ -40,8 +40,8 @@ public:
     /**
      * Assumes that the direction and worldUp vectors are not parallel.
      */
-    Camera(glm::vec3 direction, glm::vec3 worldUp)
-        : Camera(DEFAULT_POSITION, direction, worldUp)
+    Camera(glm::vec3 position, glm::vec3 direction)
+        : Camera(position, direction, DEFAULT_WORLD_UP)
     {}
 
     /**
@@ -51,7 +51,9 @@ public:
         : position_(position),
           worldUp_(glm::normalize(worldUp))
     {
+        direction = glm::normalize(direction);
         pitch_ = getPitch(direction);
+        yaw_ = 0.0f; // TODO: make yaw dependent on direction
         updateOrientation();
     }
 
@@ -103,6 +105,10 @@ public:
         return glm::vec3(position_);
     }
 
+    glm::vec3 getDirection() const {
+        return getCameraForward();
+    }
+
 private:
 
     glm::vec3 getCameraForward() const {
@@ -117,6 +123,9 @@ private:
         return glm::normalize(orientation_ * glm::vec3(1.0f, 0.0f, 0.0f));
     }
 
+    /**
+     * Assumes direction is normalized
+     */
     float getPitch(glm::vec3 direction) const {
         return glm::degrees(glm::asin(glm::dot(direction, worldUp_)));
     }
