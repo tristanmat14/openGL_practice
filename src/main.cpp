@@ -8,8 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtc/type_ptr.hpp>
 
-#include <shader.h>
-#include <camera.h>
+#include "shader.h"
+#include "camera.h"
 
 const char* vertexPath = "./shaders/vertex.glsl";
 const char* textureFragPath = "./shaders/texture_fragment.glsl";
@@ -30,7 +30,7 @@ unsigned int SCR_HEIGHT = 600;
 bool wireframeMode = false;
 
 // Camera
-Camera camera(glm::vec3(20.0f, 14.5f, 15.2f), glm::vec3(-0.6512f, -0.4769f, -0.5903f));
+Camera camera{glm::vec3(20.0f, 14.5f, 15.2f), glm::vec3(-0.6512f, -0.4769f, -0.5903f)};
 
 // Timing
 float deltaTime = 0.0f;
@@ -230,6 +230,9 @@ int main(int argc, char* argv[]) {
     float lightAngularFreq = 0.5; // rad/s
     glm::vec3 lightPosition(8.0f, 8.0f, 8.0f);   
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+    glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); 
+    glm::vec3 ambientColor = lightColor * glm::vec3(0.2f); 
+
 
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
@@ -240,11 +243,11 @@ int main(int argc, char* argv[]) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
 
-        // calculate light position
+        // calculate light position and color
         float angleRad = lightAngularFreq * deltaTime;
         glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angleRad, lightPosRotationAxis);
         lightPosition = glm::vec3(rotation * glm::vec4(lightPosition, 1.0f));
-
+        
         // input
         processInput(window);
         
@@ -261,23 +264,13 @@ int main(int argc, char* argv[]) {
         shaderProgram.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
         shaderProgram.setFloat("material.shininess", 32.0f);
 
-        lightColor.x = sin(glfwGetTime() * 2.0f);
-        lightColor.y = sin(glfwGetTime() * 0.7f);
-        lightColor.z = sin(glfwGetTime() * 1.3f);
-        
-        glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); 
-        glm::vec3 ambientColor = lightColor * glm::vec3(0.2f); 
-        
         shaderProgram.setVec3("light.ambient",  ambientColor);
         shaderProgram.setVec3("light.diffuse",  diffuseColor);
         shaderProgram.setVec3("light.specular", glm::vec3(1.0f) * lightColor); 
         shaderProgram.setVec3("light.position", lightPosition);
 
-        // generate viewProjection matrix
-        glm::mat4 projection = glm::perspective(glm::radians(camera.getZoom()), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = camera.getViewMatrix();
-
-        glm::mat4 viewProjection = projection * view;
+        float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
+        glm::mat4 viewProjection = camera.getViewProjectionMatrix(aspectRatio);
         shaderProgram.setMat4("viewProjection", viewProjection);
 
         // render boxes
@@ -305,14 +298,6 @@ int main(int argc, char* argv[]) {
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-        std::cout << "Camera Information:\n";
-        glm::vec3 cPos = camera.getPosition();
-        std::cout << "Position: " << cPos.x << ", " << cPos.y << ", " << cPos.z << ".\n";
-        glm::vec3 cDir = camera.getDirection();
-        std::cout << "Direction: " << cDir.x << ", " << cDir.y << ", " << cDir.z << ".\n"; 
-        std::cout << "---------------------\n";
-
     }
 
     // clean up
@@ -342,19 +327,28 @@ void processInput(GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
     }
 
+    auto cameraMovement = CameraMovement();
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera.move(CameraMovement::Forward, deltaTime);
+        cameraMovement.addMovement(MovementDirection::Forward);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera.move(CameraMovement::Backward, deltaTime);
+        cameraMovement.addMovement(MovementDirection::Backward);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera.move(CameraMovement::Left, deltaTime);
+        cameraMovement.addMovement(MovementDirection::Left);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera.move(CameraMovement::Right, deltaTime);
+        cameraMovement.addMovement(MovementDirection::Right);
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        cameraMovement.addMovement(MovementDirection::Up);
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+        cameraMovement.addMovement(MovementDirection::Down);
     }
 
+    camera.move(cameraMovement, deltaTime);
 }
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos) {
