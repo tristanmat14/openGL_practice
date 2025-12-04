@@ -83,7 +83,7 @@ private:
     float yaw_ = 0.0f;
 
     float sensitivity_ = 0.07f;
-    float speed_ = 2.5f;
+    float speed_ = 4.0f;
     float zoom_ = 45.0f;
 
 public:

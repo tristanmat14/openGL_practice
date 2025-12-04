@@ -240,11 +240,9 @@ int main(int argc, char* argv[]) {
 
     glm::vec3 lightPosRotationAxis = glm::normalize(glm::vec3(0.0f, 2.0f, 1.0f));
     float lightAngularFreq = 0.5; // rad/s
-    glm::vec3 lightPosition(8.0f, 8.0f, 8.0f);   
-    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-    glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); 
-    glm::vec3 ambientColor = lightColor * glm::vec3(0.2f); 
-
+    glm::vec4 lightPosition(8.0f, 8.0f, 8.0f, 1.0f);  
+    glm::vec4 lightDirection(-0.2, -1.0f, -0.3f, 0.0f); 
+    glm::vec3 lightColor(1.0f, 0.83f, 0.67f);
 
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
@@ -258,7 +256,7 @@ int main(int argc, char* argv[]) {
         // calculate light position and color
         float angleRad = lightAngularFreq * deltaTime;
         glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angleRad, lightPosRotationAxis);
-        lightPosition = glm::vec3(rotation * glm::vec4(lightPosition, 1.0f));
+        lightPosition = rotation * lightPosition;
         
         // input
         processInput(window);
@@ -270,23 +268,33 @@ int main(int argc, char* argv[]) {
         // activate shader
         shaderProgram.use();
         shaderProgram.setVec3("viewPos", camera.getPosition());
-        
 
-        shaderProgram.setVec3("light.ambient",  ambientColor);
-        shaderProgram.setVec3("light.diffuse",  diffuseColor);
+        shaderProgram.setVec3("light.ambient",  glm::vec3(0.2f) * lightColor);
+        shaderProgram.setVec3("light.diffuse",  glm::vec3(0.4f) * lightColor);
         shaderProgram.setVec3("light.specular", glm::vec3(1.0f) * lightColor); 
-        shaderProgram.setVec3("light.position", lightPosition);
+
+        shaderProgram.setVec3("light.position", camera.getPosition());
+        shaderProgram.setVec3("light.direction", camera.getDirection());
+        shaderProgram.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+        shaderProgram.setInt("light.type", 3);
+
+        shaderProgram.setFloat("light.constant",  1.0f);
+        shaderProgram.setFloat("light.linear",    0.027f);
+        shaderProgram.setFloat("light.quadratic", 0.0028f);
 
         float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix(aspectRatio);
         shaderProgram.setMat4("viewProjection", viewProjection);
 
         // render boxes
+        int i = 0;
         glBindVertexArray(VAO);
         for (auto pos : cubePositions) {
             // calculate the model matrix for each object and pass to shader before drawing
             glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
             glm::mat3 normalMatrix = glm::transpose(glm::inverse(model));
+            float angle = 20.0f * i++;
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             shaderProgram.setMat4("model", model);
             shaderProgram.setMat3("normalMatrix", normalMatrix);
             glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -296,12 +304,12 @@ int main(int argc, char* argv[]) {
         lightSourceShader.use();
         
         lightSourceShader.setMat4("viewProjection", viewProjection);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), lightPosition);
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(lightPosition));
         model = glm::scale(model, glm::vec3(0.2f));
         
         lightSourceShader.setMat4("model", model);
         lightSourceShader.setVec3("lightColor", lightColor);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        //glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
