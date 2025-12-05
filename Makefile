@@ -8,18 +8,20 @@ C_FLAGS := -Iinclude
 
 # Linking flags
 LD_FLAGS := -static -static-libgcc -static-libstdc++ \
-            -Llib -lglfw3 -lassimp -lopengl32 -lgdi32
+            -Llib -lglfw3 -lopengl32 -lgdi32 \
+            -Llib/assimp -lassimp -lzlibstatic
 
 # Default compilation mode
 mode ?= release
 
 ifeq ($(mode),debug)
 	CXX_FLAGS := $(CXX_FLAGS_DEBUG)
-	TARGET := build/debug/app.exe
 else
 	CXX_FLAGS := $(CXX_FLAGS_RELEASE)
-	TARGET := build/release/app.exe
 endif
+
+TARGET_DIR := ./build
+TARGET := $(TARGET_DIR)/app.exe
 
 # Source Files
 SRC_CXX := src/main.cpp src/stb_image.cpp
@@ -37,9 +39,7 @@ all: create_build_dir $(TARGET) $(SRC_CXX) $(SRC_C)
 
 # Create build dir before compilation
 create_build_dir:
-	mkdir -p build
-	mkdir -p build/release
-	mkdir -p build/debug
+	mkdir -p $(TARGET_DIR)
 
 # Rule for linking object files together into the target executable
 $(TARGET): $(OBJS)
