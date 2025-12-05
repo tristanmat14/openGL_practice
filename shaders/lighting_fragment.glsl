@@ -15,7 +15,8 @@ struct Material {
 struct Light {
     vec3 position;
     vec3 direction;
-    float cutOff;
+    float innerCutOff;
+    float outerCutOff;
 
     int type;
     // 1 => point source
@@ -43,6 +44,7 @@ float calculateAttenuation(float distance) {
 void main() {
     vec3 lightDir;
     float attenuation = 1.0; // no attenuation
+    float intensity = 1.0;
 
     // point source
     if (light.type == 1) {
@@ -58,14 +60,13 @@ void main() {
 
     // spotlight source
     if (light.type == 3) {
-        lightDir = normalize(light.position - FragPos);
-        float dotProduct = dot(lightDir, normalize(-light.direction));
-
-        // outside cutoff region, then just use ambient light
-        if (dotProduct <= light.cutOff) {
-            FragColor = vec4(light.ambient * vec3(texture(material.diffuse, TexCoords)), 1.0);
-            return;
-        }
+        lightDir = light.position - FragPos;
+        attenuation = calculateAttenuation(length(lightDir));
+        lightDir = normalize(lightDir);
+        
+        float theta = dot(lightDir, normalize(-light.direction));
+        float epsilon = light.innerCutOff - light.outerCutOff;
+        intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     }
 
     // ambient 
@@ -82,5 +83,13 @@ void main() {
     float specularCoeff = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = specularCoeff * vec3(texture(material.specular, TexCoords)) * light.specular;
 
-    FragColor = vec4((ambient + diffuse + specular) * attenuation, 1.0);
+    vec3 result;
+    
+    if (light.type == 3) {
+        result = ambient + ((diffuse + specular) * attenuation * intensity);
+    } else {
+        result = (ambient + diffuse + specular) * attenuation;
+    }
+
+    FragColor = vec4(result, 1.0);
 }

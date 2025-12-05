@@ -13,7 +13,7 @@
 
 const char* vertexPath = "./shaders/vertex.glsl";
 const char* textureFragPath = "./shaders/texture_fragment.glsl";
-const char* lightingFragPath = "./shaders/lighting_fragment.glsl";
+const char* lightingFragPath = "./shaders/better_lighting_fragment.glsl";
 const char* lightSourceFragPath = "./shaders/light_source_fragment.glsl";
 
 const char* containerJPG = "./textures/container.jpg";
@@ -238,11 +238,15 @@ int main(int argc, char* argv[]) {
         glm::vec3( -10.0f,  0.0f,  0.0f), 
     };
 
-    glm::vec3 lightPosRotationAxis = glm::normalize(glm::vec3(0.0f, 2.0f, 1.0f));
-    float lightAngularFreq = 0.5; // rad/s
-    glm::vec4 lightPosition(8.0f, 8.0f, 8.0f, 1.0f);  
-    glm::vec4 lightDirection(-0.2, -1.0f, -0.3f, 0.0f); 
-    glm::vec3 lightColor(1.0f, 0.83f, 0.67f);
+    glm::vec3 pointLightPositions[] = {
+        glm::vec3( 0.7f,  4.2f,  8.0f),
+        glm::vec3( 2.3f, -8.3f, -4.0f),
+        glm::vec3(-4.0f,  2.0f, -12.0f),
+        glm::vec3( 12.0f,  0.0f, -3.0f)
+    };  
+        
+    glm::vec3 moonLightColor(0.525f, 0.6f, 0.69f);
+    glm::vec3 warmLightColor(0.85f, 0.52f, 0.33f);
 
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
@@ -253,34 +257,48 @@ int main(int argc, char* argv[]) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame; 
 
-        // calculate light position and color
-        float angleRad = lightAngularFreq * deltaTime;
-        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angleRad, lightPosRotationAxis);
-        lightPosition = rotation * lightPosition;
-        
         // input
         processInput(window);
         
         // rendering commands
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(moonLightColor.x * 0.009, moonLightColor.y * 0.009, moonLightColor.z * 0.009, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         // activate shader
         shaderProgram.use();
-        shaderProgram.setVec3("viewPos", camera.getPosition());
+        shaderProgram.setVec3("viewPosition", camera.getPosition());
 
-        shaderProgram.setVec3("light.ambient",  glm::vec3(0.2f) * lightColor);
-        shaderProgram.setVec3("light.diffuse",  glm::vec3(0.4f) * lightColor);
-        shaderProgram.setVec3("light.specular", glm::vec3(1.0f) * lightColor); 
+        // point lights
+        for (int i = 0; i < 4; i++) {
+            std::string uniformStr = "pointLights[" + std::to_string(i) + "]";
+            shaderProgram.setVec3(uniformStr + ".position", pointLightPositions[i]);
 
-        shaderProgram.setVec3("light.position", camera.getPosition());
-        shaderProgram.setVec3("light.direction", camera.getDirection());
-        shaderProgram.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-        shaderProgram.setInt("light.type", 3);
+            shaderProgram.setFloat(uniformStr + ".constant", 1.0f);
+            shaderProgram.setFloat(uniformStr + ".linear", 0.07f);
+            shaderProgram.setFloat(uniformStr + ".quadratic", 0.017f);
+            
+            shaderProgram.setVec3(uniformStr + ".ambient", glm::vec3(0.05f) * warmLightColor); 
+            shaderProgram.setVec3(uniformStr + ".diffuse", glm::vec3(0.5f) * warmLightColor);
+            shaderProgram.setVec3(uniformStr + ".specular", glm::vec3(0.9f) * warmLightColor);
+        }
 
-        shaderProgram.setFloat("light.constant",  1.0f);
-        shaderProgram.setFloat("light.linear",    0.027f);
-        shaderProgram.setFloat("light.quadratic", 0.0028f);
+        // directional light
+        shaderProgram.setVec3("dirLight.direction", glm::vec3(0.0f, -1.0f, 0.0f));
+        shaderProgram.setVec3("dirLight.ambient", glm::vec3(0.05f) * moonLightColor); 
+        shaderProgram.setVec3("dirLight.diffuse", glm::vec3(0.14f) * moonLightColor);
+        shaderProgram.setVec3("dirLight.specular", glm::vec3(0.4f) * moonLightColor);
+
+        // spot light
+        shaderProgram.setVec3("spotLight.position", camera.getPosition());
+        shaderProgram.setVec3("spotLight.direction", camera.getDirection());
+        shaderProgram.setFloat("spotLight.innerCutOff", glm::cos(glm::radians(10.5f)));
+        shaderProgram.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.5f)));
+        shaderProgram.setFloat("spotLight.constant", 1.0f);
+        shaderProgram.setFloat("spotLight.linear", 0.027f);
+        shaderProgram.setFloat("spotLight.quadratic", 0.0028f);
+        shaderProgram.setVec3("spotLight.ambient", glm::vec3(0.1f)); 
+        shaderProgram.setVec3("spotLight.diffuse", glm::vec3(0.8f));
+        shaderProgram.setVec3("spotLight.specular", glm::vec3(1.0f));
 
         float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix(aspectRatio);
@@ -292,24 +310,36 @@ int main(int argc, char* argv[]) {
         for (auto pos : cubePositions) {
             // calculate the model matrix for each object and pass to shader before drawing
             glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
-            glm::mat3 normalMatrix = glm::transpose(glm::inverse(model));
             float angle = 20.0f * i++;
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            if (i % 3 == 0) {
+                model = glm::scale(model, glm::vec3(3.0f));
+            } else if (i % 2 == 0) {
+                model = glm::scale(model, glm::vec3(2.0f));
+            }
+
             shaderProgram.setMat4("model", model);
+           
+            // make sure normalMatrix calculation is AFTER model calculation
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(model));
             shaderProgram.setMat3("normalMatrix", normalMatrix);
+            
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
         // render light source
         lightSourceShader.use();
-        
         lightSourceShader.setMat4("viewProjection", viewProjection);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(lightPosition));
-        model = glm::scale(model, glm::vec3(0.2f));
         
-        lightSourceShader.setMat4("model", model);
-        lightSourceShader.setVec3("lightColor", lightColor);
-        //glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (auto lightPos : pointLightPositions) {
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(lightPos));
+            model = glm::scale(model, glm::vec3(0.2f));
+            
+            lightSourceShader.setMat4("model", model);
+            lightSourceShader.setVec3("lightColor", warmLightColor);
+            
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        } 
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
