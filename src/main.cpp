@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
    
-    Model backpack("./resources/backpack");
+    Model backpack("./resources/backpack/backpack.obj");
 
     while (!glfwWindowShouldClose(window)) {
         // pre-frame time logic
@@ -308,7 +308,7 @@ int main(int argc, char* argv[]) {
         shaderProgram.setMat4("viewProjection", viewProjection);
 
         // render boxes
-        int i = 0;
+        /**int i = 0;
         glBindVertexArray(VAO);
         for (auto pos : cubePositions) {
             // calculate the model matrix for each object and pass to shader before drawing
@@ -328,9 +328,14 @@ int main(int argc, char* argv[]) {
             shaderProgram.setMat3("normalMatrix", normalMatrix);
             
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        }*/
+       
+        glm::mat4 model = glm::mat4(1.0f);
+        shaderProgram.setMat4("model", model);
+        backpack.draw(shaderProgram);
 
         // render light source
+        glBindVertexArray(VAO);
         lightSourceShader.use();
         lightSourceShader.setMat4("viewProjection", viewProjection);
         
@@ -342,9 +347,8 @@ int main(int argc, char* argv[]) {
             lightSourceShader.setVec3("lightColor", warmLightColor);
             
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        } 
-
-        backpack.draw(shaderProgram);
+        }
+        glBindVertexArray(0); 
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
