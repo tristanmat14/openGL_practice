@@ -10,16 +10,17 @@
 
 #include "shader.h"
 #include "camera.h"
+#include "model.h"
 
-const char* vertexPath = "./shaders/vertex.glsl";
-const char* textureFragPath = "./shaders/texture_fragment.glsl";
-const char* lightingFragPath = "./shaders/better_lighting_fragment.glsl";
-const char* lightSourceFragPath = "./shaders/light_source_fragment.glsl";
+const char* vertexPath = "./resources/shaders/vertex.glsl";
+const char* textureFragPath = "./resources/shaders/texture_fragment.glsl";
+const char* lightingFragPath = "./resources/shaders/better_lighting_fragment.glsl";
+const char* lightSourceFragPath = "./resources/shaders/light_source_fragment.glsl";
 
-const char* containerJPG = "./textures/container.jpg";
-const char* containerMetalPNG = "./textures/container_metal.png";
-const char* awesomefacePNG = "./textures/awesomeface.png";
-const char* containerMetalSpecularPNG = "./textures/container_metal_specular.png";
+const char* containerJPG = "./resources/textures/container.jpg";
+const char* containerMetalPNG = "./resources/textures/container_metal.png";
+const char* awesomefacePNG = "./resources/textures/awesomeface.png";
+const char* containerMetalSpecularPNG = "./resources/textures/container_metal_specular.png";
 
 void errorExit(std::string msg, int errorReturn);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -250,7 +251,9 @@ int main(int argc, char* argv[]) {
 
     // resets lastFrame before entering render loop
     lastFrame = glfwGetTime();
-    
+   
+    Model backpack("./resources/backpack");
+
     while (!glfwWindowShouldClose(window)) {
         // pre-frame time logic
         float currentFrame = glfwGetTime();
@@ -340,6 +343,8 @@ int main(int argc, char* argv[]) {
             
             glDrawArrays(GL_TRIANGLES, 0, 36);
         } 
+
+        backpack.draw(shaderProgram);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
