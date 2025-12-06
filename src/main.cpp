@@ -63,26 +63,30 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
 
     // glad: load all OpenGL function pointers
-    // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         errorExit("Failed to initialize GLAD", -1);
     }
 
     // configure global opengl state
-    // -----------------------------
     glEnable(GL_DEPTH_TEST);
-    //glDepthFunc(GL_ALWAYS); // always pass the depth test (same effect as glDisable(GL_DEPTH_TEST))
+    // glDepthFunc(GL_ALWAYS); // always pass the depth test
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
+    glStencilMask(0x00); // disable writing to stencil mask as default
 
     // build and compile shaders
-    // -------------------------
     Shader shader(
         "resources/shaders/depth_testing.vs",
         "resources/shaders/depth_testing.fs"
     );
 
+    Shader outlineShader(
+        "resources/shaders/depth_testing.vs",
+        "resources/shaders/stencil_outline.fs"
+    );
+
     // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
     float cubeVertices[] = {
         // positions          // texture Coords
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -128,7 +132,7 @@ int main()
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
     float planeVertices[] = {
-        // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
+        // positions          // texture Coords
          5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
         -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
         -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
@@ -163,64 +167,96 @@ int main()
     glBindVertexArray(0);
 
     // load textures
-    // -------------
     unsigned int cubeTexture  = loadTexture("resources/textures/marble.jpg");
     unsigned int floorTexture = loadTexture("resources/textures/metal.png");
 
     // shader configuration
-    // --------------------
     shader.use();
     shader.setInt("texture1", 0);
 
     // render loop
-    // -----------
     while(!glfwWindowShouldClose(window))
     {
         // per-frame time logic
-        // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
         // input
-        // -----
         processInput(window);
 
         // render
-        // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glStencilMask(0xFF); // enable writing to stencil buffer for clear
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        glStencilMask(0x00); // disable writing to stencil buffer again
 
-        shader.use();
+        // initial setup
         glm::mat4 model = glm::mat4(1.0f);
         float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
         glm::mat4 viewProj = camera.getViewProjectionMatrix(aspectRatio);
+        shader.use();
         shader.setMat4("viewProj", viewProj);
-        // cubes
-        glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, cubeTexture); 	
-        model = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, -1.0f));
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f));
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        outlineShader.use();
+        outlineShader.setMat4("viewProj", viewProj);
+
         // floor
+        shader.use();
         glBindVertexArray(planeVAO);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         shader.setMat4("model", glm::mat4(1.0f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
+        // cubes
+        shader.use();
+        glBindVertexArray(cubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, cubeTexture);
+        // cube 1
+        glStencilMask(0x01); // enable writing to only the first bit of the stencil buffer
+        glStencilFunc(GL_ALWAYS, 0x01, 0x01); // for every fragment we render, set the first bit in the stencil
+        model = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, -1.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // cube 2
+        glStencilMask(0x02); // enable writing to only the second bit of the stencil buffer
+        glStencilFunc(GL_ALWAYS, 0x02, 0x02); // for every fragment we render, set the second bit in the stencil
+        model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glStencilMask(0x00); // disable writing to the stencil buffer
+
+        // outline
+        outlineShader.use();
+        glBindVertexArray(cubeVAO);
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        float outlineScale = 1.05f;
+        // outline 1
+        model = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, -1.0f));
+        model = glm::scale(model, glm::vec3(outlineScale));
+        outlineShader.setMat4("model", model);
+        outlineShader.setVec3("outlineColor", glm::vec3(0.0f, 0.28, 0.26));
+        glStencilFunc(GL_NOTEQUAL, 0x01, 0x01); // check if the first bit is set
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // outline 2
+        model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(outlineScale));
+        outlineShader.setMat4("model", model);
+        outlineShader.setVec3("outlineColor", glm::vec3(0.5f, 0.28, 0.26));
+        glStencilFunc(GL_NOTEQUAL, 0x02, 0x02); // check if the second bit is set
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+
+        // swap buffers and poll io events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
+    // de-allocate all resources once they've outlived their purpose:
     glDeleteVertexArrays(1, &cubeVAO);
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteBuffers(1, &cubeVBO);
