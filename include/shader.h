@@ -8,15 +8,19 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <string>
 
-class Shader
-{
+class Shader {
 public:
     unsigned int ID;
     // constructor generates the shader on the fly
     // ------------------------------------------------------------------------
-    Shader(const char* vertexPath, const char* fragmentPath)
+    Shader(const std::string& vertexFileName, const std::string& fragmentFileName)
     {
+        std::string shaderDir = "resources/shaders/";
+        std::string vertexPath = shaderDir + vertexFileName;
+        std::string fragmentPath = shaderDir + fragmentFileName;
+
         // 1. retrieve the vertex/fragment source code from filePath
         std::string vertexCode;
         std::string fragmentCode;
