@@ -75,6 +75,7 @@ int main()
     glEnable(GL_STENCIL_TEST);
     glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
     glStencilMask(0x00); // disable writing to stencil mask as default
+    glEnable(GL_CULL_FACE);
 
     // build and compile shaders
     Shader shader("depth_testing.vs", "depth_testing.fs");
@@ -82,68 +83,74 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float cubeVertices[] = {
-        // positions          // texture Coords
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left (ccw)
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+        0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // bottom-right         
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right (ccw)
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // bottom-left
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left (ccw)
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right (ccw)
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // top-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+        // Left face
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right (ccw)
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
 
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left (ccw)
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        // Right face
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left (ccw)
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right         
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right (ccw)
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+        0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left     
+        // Bottom face
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right (ccw)
+        0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // top-left
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left (ccw)
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+        // Top face
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left (ccw)
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right  
+
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right (ccw)
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // bottom-left        
     };
     float planeVertices[] = {
         // positions          // texture Coords
-         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f, // close-right (cw)
+        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f, // close-left
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f, // far-left
 
-         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
-         5.0f, -0.5f, -5.0f,  2.0f, 2.0f								
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f, // close-right (cw)
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f, // far-left
+         5.0f, -0.5f, -5.0f,  2.0f, 2.0f  // far-right								
     };
     float quadVertices[] = {
         // positions          // texture Coords
-         0.0f,  0.5f,  0.0f,  0.0f, 0.0f,
-         1.0f, -0.5f,  0.0f,  1.0f, 1.0f,
-         0.0f, -0.5f,  0.0f,  0.0f, 1.0f,
+         0.0f,  0.5f,  0.0f,  0.0f, 0.0f, // top-left (cw)
+         1.0f, -0.5f,  0.0f,  1.0f, 1.0f, // bottom-right
+         0.0f, -0.5f,  0.0f,  0.0f, 1.0f, // bottom-left
 
-         0.0f,  0.5f,  0.0f,  0.0f, 0.0f,
-         1.0f, -0.5f,  0.0f,  1.0f, 1.0f,
-         1.0f,  0.5f,  0.0f,  1.0f, 0.0f								
+         0.0f,  0.5f,  0.0f,  0.0f, 0.0f, // top-left (ccw)
+         1.0f, -0.5f,  0.0f,  1.0f, 1.0f, // bottom-right
+         1.0f,  0.5f,  0.0f,  1.0f, 0.0f  // top-right							
     };
 
     // cube VAO
@@ -234,11 +241,13 @@ int main()
 
         // floor
         shader.use();
+        glDisable(GL_CULL_FACE);
         glBindVertexArray(planeVAO);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         shader.setMat4("model", glm::mat4(1.0f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+        glEnable(GL_CULL_FACE);
 
         // cubes
         shader.use();
@@ -256,6 +265,7 @@ int main()
 
         // windows
         shader.use();
+        glDisable(GL_CULL_FACE);
         glBindVertexArray(quadVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, windowTexture);
@@ -273,12 +283,14 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         glDisable(GL_BLEND);
+        glEnable(GL_CULL_FACE);
 
         // outline
         outlineShader.use();
         glBindVertexArray(cubeVAO);
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         float outlineScale = 1.05f;
         for (auto cubePos : cubes) {
@@ -291,6 +303,7 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
       
 
