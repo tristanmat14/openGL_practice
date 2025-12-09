@@ -80,6 +80,7 @@ int main()
     // build and compile shaders
     Shader shader("depth_testing.vs", "depth_testing.fs");
     Shader outlineShader("depth_testing.vs", "stencil_outline.fs");
+    Shader screenShader("framebuffer_vert.glsl", "framebuffer_frag.glsl");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float cubeVertices[] = {
@@ -144,13 +145,23 @@ int main()
     };
     float quadVertices[] = {
         // positions          // texture Coords
-         0.0f,  0.5f,  0.0f,  0.0f, 0.0f, // top-left (cw)
-         1.0f, -0.5f,  0.0f,  1.0f, 1.0f, // bottom-right
-         0.0f, -0.5f,  0.0f,  0.0f, 1.0f, // bottom-left
+         0.0f,  0.5f,  0.0f,  0.0f, 1.0f, // top-left (cw)
+         1.0f, -0.5f,  0.0f,  1.0f, 0.0f, // bottom-right
+         0.0f, -0.5f,  0.0f,  0.0f, 0.0f, // bottom-left
 
-         0.0f,  0.5f,  0.0f,  0.0f, 0.0f, // top-left (ccw)
-         1.0f, -0.5f,  0.0f,  1.0f, 1.0f, // bottom-right
-         1.0f,  0.5f,  0.0f,  1.0f, 0.0f  // top-right							
+         0.0f,  0.5f,  0.0f,  0.0f, 1.0f, // top-left (ccw)
+         1.0f, -0.5f,  0.0f,  1.0f, 0.0f, // bottom-right
+         1.0f,  0.5f,  0.0f,  1.0f, 1.0f  // top-right							
+    };
+    float screenVertices[] = {
+        // positions          // texture Coords
+        -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, // top-left (cw)
+         1.0f, -1.0f,  0.0f,  1.0f, 0.0f, // bottom-right
+        -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, // bottom-left
+
+        -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, // top-left (ccw)
+         1.0f, -1.0f,  0.0f,  1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f,  0.0f,  1.0f, 1.0f  // top-right							
     };
 
     // cube VAO
@@ -164,7 +175,6 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glBindVertexArray(0);
     // plane VAO
     unsigned int planeVAO, planeVBO;
     glGenVertexArrays(1, &planeVAO);
@@ -176,7 +186,6 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glBindVertexArray(0);
     // quad VAO
     unsigned int quadVAO, quadVBO;
     glGenVertexArrays(1, &quadVAO);
@@ -188,10 +197,54 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    // quad VAO
+    unsigned int screenVAO, screenVBO;
+    glGenVertexArrays(1, &screenVAO);
+    glGenBuffers(1, &screenVBO);
+    glBindVertexArray(screenVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(screenVertices), &screenVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    // unbind VAO
     glBindVertexArray(0);
 
+    // create frame buffer
+    unsigned int FBO;
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    // create texture object for frame buffer
+    unsigned int texColorBuffer;
+    glGenTextures(1, &texColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    // attach texture object to frame buffer
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
+
+    // creating render buffer object for depth and stencil buffers
+    unsigned int RBO;
+    glGenRenderbuffers(1, &RBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, RBO); 
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);  
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    // attach render buffer to the frame buffer
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+    // make sure the frame buffer was created correctly
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        errorExit("ERROR::FRAMEBUFFER:: Framebuffer is not complete!", 0);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     // load textures
-    unsigned int cubeTexture  = loadTexture("marble.jpg");
+    unsigned int cubeTexture  = loadTexture("container.jpg");
     unsigned int floorTexture = loadTexture("metal.png");
     unsigned int vegitationTexture = loadTexture("grass.png");
     unsigned int windowTexture = loadTexture("window.png");
@@ -225,10 +278,12 @@ int main()
         // input
         processInput(window);
 
-        // render
+        // render to custome frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glStencilMask(0xFF); // enable writing to stencil buffer for clear
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
         glStencilMask(0x00); // disable writing to stencil buffer again
 
         // initial setup
@@ -298,7 +353,7 @@ int main()
             glm::mat4 model = glm::translate(glm::mat4(1.0f), cubePos);
             model = glm::scale(model, glm::vec3(outlineScale));
             outlineShader.setMat4("model", model);
-            outlineShader.setVec3("outlineColor", glm::vec3(0.0f, 0.28, 0.26));
+            outlineShader.setVec4("outlineColor", glm::vec4(0.0f, 0.28, 0.26, 1.0));
             glStencilFunc(GL_NOTEQUAL, 0x01, 0x01); // check if the first bit is set
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -306,6 +361,19 @@ int main()
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
       
+        
+        // render to default frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        screenShader.use();
+        glBindVertexArray(screenVAO);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
 
         // swap buffers and poll io events
         glfwSwapBuffers(window);
