@@ -57,12 +57,12 @@ public:
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
         glCompileShader(vertex);
-        checkCompileErrors(vertex, "VERTEX");
+        checkCompileErrors(vertex, "VERTEX - " + vertexFileName);
         // fragment Shader
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragment, 1, &fShaderCode, NULL);
         glCompileShader(fragment);
-        checkCompileErrors(fragment, "FRAGMENT");
+        checkCompileErrors(fragment, "FRAGMENT - " + fragmentFileName);
         // shader Program
         ID = glCreateProgram();
         glAttachShader(ID, vertex);

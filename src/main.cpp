@@ -13,11 +13,12 @@
 #include <iostream>
 #include <map>
 
-void errorExit(std::string msg, int errorReturn);
+void errorExit(std::string msg, int errorReturn = 1);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 unsigned int loadTexture(const std::string& fileName);
+unsigned int loadCubeMap(const std::string& fileDirectory, const std::string& fileSuffix);
 
 // settings
 unsigned int SCR_WIDTH = 800;
@@ -81,6 +82,7 @@ int main()
     Shader shader("depth_testing.vs", "depth_testing.fs");
     Shader outlineShader("depth_testing.vs", "stencil_outline.fs");
     Shader screenShader("framebuffer_vert.glsl", "framebuffer_frag.glsl");
+    Shader skyboxShader("skybox.vs", "skybox.fs");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float cubeVertices[] = {
@@ -248,6 +250,7 @@ int main()
     unsigned int floorTexture = loadTexture("metal.png");
     unsigned int vegitationTexture = loadTexture("grass.png");
     unsigned int windowTexture = loadTexture("window.png");
+    unsigned int skyboxTexture = loadCubeMap("skybox", ".jpg");
 
     // shader configuration
     shader.use();
@@ -278,7 +281,8 @@ int main()
         // input
         processInput(window);
 
-        // render to custome frame buffer
+
+        // render everything to custom frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glStencilMask(0xFF); // enable writing to stencil buffer for clear
@@ -317,6 +321,19 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, 36);
             glStencilMask(0x00); // disable writing to the stencil buffer
         }
+
+        // render skybox as late as possible (but before transparent objects)
+        glDisable(GL_CULL_FACE);
+        glDepthFunc(GL_LEQUAL);
+        skyboxShader.use();
+        glm::mat4 skyboxView = glm::mat4(glm::mat3(camera.getViewMatrix()));
+        glm::mat4 skyboxViewProj = camera.getProjectionMatrix(aspectRatio) * skyboxView;
+        skyboxShader.setMat4("viewProj", skyboxViewProj);
+        glBindVertexArray(cubeVAO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
 
         // windows
         shader.use();
@@ -360,7 +377,6 @@ int main()
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
-      
         
         // render to default frame buffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -461,8 +477,7 @@ unsigned int loadTexture(const std::string& fileName) {
 
     int width, height, nrComponents;
     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
-    if (data)
-    {
+    if (data) {
         GLint param = GL_REPEAT;
         GLenum format;
         if (nrComponents == 1) {
@@ -484,12 +499,68 @@ unsigned int loadTexture(const std::string& fileName) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         stbi_image_free(data);
-    }
-    else
-    {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
+    } else {
         stbi_image_free(data);
+        errorExit("Texture failed to load at path: " + pathString + "\n");
     }
 
     return textureID;
+}
+
+/**
+ * Assumes that the fileDirectory given has a texture image for each direction.
+ * named after the direction it is in.
+ * Also assumes that each texture file has the same file suffix (i.e. all ".jpg").
+ */
+unsigned int loadCubeMap(const std::string& fileDirectory, const std::string& fileSuffix) {
+    std::string dirString = "resources/textures/" + fileDirectory;
+
+    const std::vector<std::string> directions = {
+        "right", "left", "top", "bottom", "back", "front"
+    };
+
+    unsigned int cubeMapID;
+    glGenTextures(1, &cubeMapID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapID);
+
+    int width, height, nrComponents;
+    int i = 0;
+    for (auto direction : directions) {
+        std::string pathString = dirString + "/" + direction + fileSuffix;
+        char const* path = pathString.c_str();
+
+        unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    
+        if (data) {
+            GLint param = GL_REPEAT;
+            GLenum format;
+            if (nrComponents == 1) {
+                format = GL_RED;
+            } else if (nrComponents == 3) {
+                format = GL_RGB;
+            } else if (nrComponents == 4) {
+                format = GL_RGBA;
+                param = GL_CLAMP_TO_EDGE;
+            }
+        
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data
+            );
+
+        } else {
+            stbi_image_free(data);
+            errorExit("Texture failed to load at path: " + pathString + "\n");
+        }
+        
+        stbi_image_free(data);
+        i++;
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return cubeMapID;
 }
